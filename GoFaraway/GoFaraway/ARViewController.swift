@@ -17,7 +17,7 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
     let locationManager = CLLocationManager()
     var currentLocation = CLLocation()
     var temp = ""
-
+    
     @IBOutlet weak var arscnView: ARSCNView!
     
     @IBOutlet weak var keyBoardView: UIView!
@@ -25,10 +25,19 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
     @IBOutlet weak var myTextField: UITextField!
     
     @IBAction func didTapScreen(_ sender: UITapGestureRecognizer) {
-        if sender.location(in: self.view).y < self.view.bounds.height - 250{
-            self.myTextField.resignFirstResponder()
+        let point = sender.location(in: self.arscnView)
+        let arr = arscnView.hitTest(point, options: nil)
+        if arr.count > 0{
+            let hit = arr.first
+            let node = hit?.node
+            node?.removeFromParentNode()
+        }else{
+            if sender.location(in: self.view).y < self.view.bounds.height - 250{
+                self.myTextField.resignFirstResponder()
+            }
         }
     }
+    
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -74,6 +83,9 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
         arscnView.session.pause()
     }
     
+    
+    //MARK: -- LOCATIONMANAGERDELEGATE
+    
     //判断定位是否开启
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
         if status == CLAuthorizationStatus.notDetermined || status == CLAuthorizationStatus.denied{
@@ -116,6 +128,7 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
         
         //self.arscnView.addTextLabel(text: "我在github等你", x: point.x , y: 0.0, z: point.z)
     }
+    //MARK: --
     
     func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
         //在后台储存当前发布的内容

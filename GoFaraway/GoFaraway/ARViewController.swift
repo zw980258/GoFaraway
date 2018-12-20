@@ -16,7 +16,8 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
     var height = 0.0
     let locationManager = CLLocationManager()
     var currentLocation = CLLocation()
-    var temp = ""
+    var temp = "" //用于临时记录被清除的文本输入框信息
+    var objects : [AVObject] = []
     
     @IBOutlet weak var arscnView: ARSCNView!
     
@@ -64,7 +65,7 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
         
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyBest
-        locationManager.distanceFilter = 50
+        locationManager.distanceFilter = 30
         locationManager.pausesLocationUpdatesAutomatically = true
         locationManager.requestAlwaysAuthorization()
         // Create a session configuration
@@ -84,7 +85,7 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
     }
     
     
-    //MARK: -- LOCATIONMANAGERDELEGATE
+    //MARK: - LOCATIONMANAGERDELEGATE
     
     //判断定位是否开启
     func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
@@ -99,19 +100,33 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
     
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         
+        //使用reload方法将页面刷新
+        self.arscnView.reloadInputViews()
         currentLocation = locations.last!
         print("定位开始")
+        let rangeOfLongitude_max = currentLocation.coordinate.longitude + 0.0003
+        let rangeOfLongitude_min = currentLocation.coordinate.longitude - 0.0003
+        let rangeOfLatitude_min = currentLocation.coordinate.latitude - 0.0003
+        let rangeOfLatitude_max = currentLocation.coordinate.latitude + 0.0003
         
         //let targetLoction = CLLocation(latitude: 30.00428, longitude: 120.59846)
-        //let objects = AVOSCloud().getDataFromCloud()
         //下面这个云端获取方法待优化
-        let query =  AVQuery(className: "Location")
-        var objects : [AVObject] = []
+        let query1 = AVQuery(className: "Location")
+        query1.whereKey("longitude", lessThanOrEqualTo: rangeOfLongitude_max)
+        let query2 = AVQuery(className: "Location")
+        query2.whereKey("longitude", greaterThanOrEqualTo: rangeOfLongitude_min)
+        let query3 = AVQuery(className: "Location")
+        query3.whereKey("latitude", lessThanOrEqualTo: rangeOfLatitude_max)
+        let query4 = AVQuery(className: "Location")
+        query4.whereKey("latitude", greaterThanOrEqualTo: rangeOfLatitude_min)
+        //var query =  AVQuery(className: "Location")
+        let query = AVQuery.andQuery(withSubqueries: [query1,query2,query3,query4])
         
         query.findObjectsInBackground { (result, error) in
             if let results = result as? [AVObject]{
-                objects = results
-                for object in objects{
+                self.objects = results
+                print("云端获取的数组数量是：",self.objects.count)
+                for object in self.objects{
                     let point = self.locationManager.calculateDistance(currentPoint: self.currentLocation, longitude: object["longitude"] as! Double, latitude: object["latitude"] as! Double, altitude: object["altitude"] as! Double)
                     print("当前相对坐标系： x: \(point.x), y: \(point.y), z: \(point.z)")
                     self.arscnView.addTextLabel(text: object["content"] as! String, x: point.x, y: point.y
@@ -122,13 +137,8 @@ class ARViewController: UIViewController, ARSCNViewDelegate, UITextFieldDelegate
             }
         }
         
-       
-        
-        //let point = self.locationManager.calculateDistance(currentPoint: self.currentLocation, longitude: targetLoction, latitude: , altitude: )
-        
-        //self.arscnView.addTextLabel(text: "我在github等你", x: point.x , y: 0.0, z: point.z)
     }
-    //MARK: --
+    //MARK: - SCNNode
     
     func renderer(_ renderer: SCNSceneRenderer, nodeFor anchor: ARAnchor) -> SCNNode? {
         //在后台储存当前发布的内容
